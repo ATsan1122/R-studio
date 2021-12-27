@@ -53,3 +53,54 @@ for(i in 1:nrow(C))
 }
 A$pro <- round(A[,2]/colSums(as.matrix(A$Freq))*100, digits = 3)
 A <- A[order(A$pro, decreasing = T),]
+
+
+library(sf) ##要讀取Shapefile需要的套件
+taiwan.map <- st_read("C:/Users/user/Desktop/gadm36_TWN_shp/gadm36_TWN_2.shp") #匯入台灣地圖Shapefile檔
+head(taiwan.map) #檢查有無資料匯進來
+  dim(taiwan.map) #檢查各維度長度
+
+#從Shapefile檔某一欄繪製地圖
+plot(st_geometry(taiwan.map))
+plot(taiwan.map["NL_NAME_2"], axes = TRUE)
+st_geometry(taiwan.map)
+
+#以ggplot繪製Shapefile地圖檔
+library(ggplot2) #ggplot套件:ggplot2
+##台灣地圖黑白
+ggplot(data = taiwan.map) +geom_sf() +labs(title = "台灣地圖")
+##台灣地圖-彩色
+library(RColorBrewer) ##要匯多種顏色需要該套件
+ggplot(data = taiwan.map) + ##ggplot(data=你的資料變數名稱) 
+  geom_sf(aes(fill = NL_NAME_2)) + ##geom_sf(aes(fill =資料內哪一欄位 ))
+  scale_fill_manual(name = "縣市區",values = colorRampPalette(brewer.pal(8, "Accent"))(22)) +
+  #brewer.pal(8,'Accent') 從Accent調色盤中選出8個顏色
+  #colorRampPalette(brewer.pal(8,'Accent'))(22) 利用colorRampPalette()擴展調色盤中的顏色。從只有8個顏色的Accent中生成22個顏色
+  labs(title = "台灣地圖") ##標題
+
+ggplot(data = taiwan.map) + ##ggplot(data=你的資料變數名稱)
+  geom_sf(aes(fill = NL_NAME_2),show.legend= F) + ##show.lengend:表示是否要在旁邊註解顏色代表甚麼意義，不打或T表示要，FALSE表示不顯示
+  geom_sf_text(aes(label = NL_NAME_2), size = 3) + ##在地圖上標籤。label = 要以變數哪欄的資料為標籤依據 ##size:字體的大小
+  labs(title = "台灣地圖") ##標題
+
+##匯入要統計的資料檔
+library(readxl) 
+data <- read.csv("C:/Users/user/Desktop/縣市病例數.csv") ##匯入資料
+head(data$縣市)
+data$縣市 <- as.character(data$縣市)
+taiwan.map$NL_NAME_2 <- factor(taiwan.map$NL_NAME_2)
+levels(taiwan.map$NL_NAME_2)[c(1:4, 12)] <- c("台中市", "台北市", "台東縣", "台南市", "連江縣")
+my.taiwan.map <- taiwan.map[c("NL_NAME_2", "geometry")]
+my.taiwan.map$NL_NAME_2 <- as.character(my.taiwan.map$NL_NAME_2)
+head(my.taiwan.map)
+
+library(dplyr)
+my.taiwan.map.data <- left_join(my.taiwan.map, data,by= c("NL_NAME_2" = "縣市"))
+head(my.taiwan.map.data)
+dim(my.taiwan.map.data)
+ggplot(data = my.taiwan.map.data) +geom_sf(aes(fill = 確定病例數))
+
+ggplot(data = my.taiwan.map.data) +
+  geom_sf(aes(fill = 確定病例數)) +
+  geom_sf_text(aes(label = NL_NAME_2), size = 3) +
+  scale_fill_distiller(palette = "Spectral", name = "確定病例數(個)")+labs(title="台灣縣市病例數分佈圖", x ="經度", y = "緯度")
